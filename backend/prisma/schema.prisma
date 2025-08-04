@@ -1,0 +1,292 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PATIENT
+  DONOR
+  HEALTHCARE_PROVIDER
+  ADMIN
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum DonationStatus {
+  REQUESTED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  SYSTEM
+}
+
+enum NotificationType {
+  DONATION_REQUEST
+  DONATION_SCHEDULED
+  DONATION_REMINDER
+  HEALTH_UPDATE
+  SYSTEM_ALERT
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  phone             String?  @unique
+  password          String
+  firstName         String
+  lastName          String
+  dateOfBirth       DateTime?
+  gender            String?
+  role              UserRole
+  isActive          Boolean  @default(true)
+  isVerified        Boolean  @default(false)
+  profilePicture    String?
+  address           Json?
+  emergencyContact  Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Role-specific profiles
+  patientProfile    PatientProfile?
+  donorProfile      DonorProfile?
+  providerProfile   HealthcareProviderProfile?
+
+  // Relationships
+  sentMessages      Message[] @relation("MessageSender")
+  receivedMessages  Message[] @relation("MessageReceiver")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model PatientProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  bloodType             BloodType
+  thalassemiaType       String
+  diagnosisDate         DateTime?
+  currentHemoglobin     Float?
+  transfusionFrequency  Int? // days between transfusions
+  lastTransfusion       DateTime?
+  nextTransfusion       DateTime?
+  preferredHospital     String?
+  medicalHistory        Json?
+  currentMedications    Json?
+  allergies             Json?
+  
+  // Relationships
+  donationRequests      DonationRequest[]
+  healthRecords         HealthRecord[]
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("patient_profiles")
+}
+
+model DonorProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  bloodType             BloodType
+  weight                Float?
+  height                Float?
+  lastDonation          DateTime?
+  donationCount         Int      @default(0)
+  isEligible            Boolean  @default(true)
+  medicalClearance      DateTime?
+  preferredLocations    Json?
+  availabilitySchedule  Json?
+  
+  // Relationships
+  donations             Donation[]
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("donor_profiles")
+}
+
+model HealthcareProviderProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  licenseNumber         String   @unique
+  specialization        String
+  hospitalAffiliation   String?
+  yearsOfExperience     Int?
+  certifications        Json?
+  
+  // Relationships
+  healthRecords         HealthRecord[]
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("healthcare_provider_profiles")
+}
+
+model DonationRequest {
+  id                    String   @id @default(cuid())
+  patientId             String
+  patient               PatientProfile @relation(fields: [patientId], references: [id])
+  
+  bloodType             BloodType
+  unitsRequired         Int
+  urgencyLevel          Int      @default(1) // 1-5 scale
+  requiredBy            DateTime
+  location              Json
+  hospitalName          String?
+  contactPerson         String?
+  contactPhone          String?
+  medicalNotes          String?
+  status                DonationStatus @default(REQUESTED)
+  
+  // Relationships
+  donations             Donation[]
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("donation_requests")
+}
+
+model Donation {
+  id                    String   @id @default(cuid())
+  requestId             String
+  request               DonationRequest @relation(fields: [requestId], references: [id])
+  donorId               String
+  donor                 DonorProfile @relation(fields: [donorId], references: [id])
+  
+  scheduledDate         DateTime
+  actualDate            DateTime?
+  location              Json
+  unitsCollected        Int?
+  status                DonationStatus @default(SCHEDULED)
+  notes                 String?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("donations")
+}
+
+model HealthRecord {
+  id                    String   @id @default(cuid())
+  patientId             String
+  patient               PatientProfile @relation(fields: [patientId], references: [id])
+  providerId            String?
+  provider              HealthcareProviderProfile? @relation(fields: [providerId], references: [id])
+  
+  recordType            String
+  date                  DateTime
+  hemoglobinLevel       Float?
+  ironLevel             Float?
+  ferritinLevel         Float?
+  medications           Json?
+  symptoms              Json?
+  notes                 String?
+  attachments           Json?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("health_records")
+}
+
+model Message {
+  id                    String   @id @default(cuid())
+  senderId              String
+  sender                User     @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId            String
+  receiver              User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  
+  content               String
+  messageType           MessageType @default(TEXT)
+  attachments           Json?
+  isRead                Boolean  @default(false)
+  readAt                DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("messages")
+}
+
+model Notification {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  
+  type                  NotificationType
+  title                 String
+  message               String
+  data                  Json?
+  isRead                Boolean  @default(false)
+  readAt                DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id                    String   @id @default(cuid())
+  userId                String?
+  user                  User?    @relation(fields: [userId], references: [id])
+  
+  action                String
+  resource              String
+  resourceId            String?
+  oldValues             Json?
+  newValues             Json?
+  ipAddress             String?
+  userAgent             String?
+  
+  createdAt             DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model MLPrediction {
+  id                    String   @id @default(cuid())
+  
+  predictionType        String
+  inputData             Json
+  outputData            Json
+  confidence            Float?
+  modelVersion          String?
+  
+  createdAt             DateTime @default(now())
+
+  @@map("ml_predictions")
+}

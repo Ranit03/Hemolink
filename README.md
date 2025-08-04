@@ -193,6 +193,10 @@ curl -X POST http://localhost:8001/predict/compatibility \
     "patient": {"blood_type": "A_POSITIVE", "age": 25}
   }'
 ```
+# login details for donor:
+jane.smith@email.com , jane123
+amit.patel@email.com , amit123
+sunita.reddy@email.com , sunita123
 
 ## 🎨 Demo Features
 
@@ -279,16 +283,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **🤝 SVP India**: For mentorship and guidance
 - **💻 Open Source Community**: For the amazing tools and libraries that made this possible
 
-## 📞 Contact & Support
 
-For questions, suggestions, or collaboration opportunities:
-
-- **📧 Email**: [Your Email Address]
-- **🐛 Issues**: [GitHub Issues URL]
-- **💬 Discussions**: [GitHub Discussions URL]
-- **🐦 Twitter**: [Your Twitter Handle]
-
----
 
 <div align="center">
 

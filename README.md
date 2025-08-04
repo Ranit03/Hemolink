@@ -85,6 +85,10 @@ cd backend && npm install
 
 # Install frontend dependencies
 cd ../frontend && npm install
+
+# Install ml-services dependencies
+cd ../ml-services && pip install -r requirements.txt
+```
 ```
 
 #### 2. Start All Services
@@ -96,7 +100,7 @@ cd backend && npm run dev
 cd frontend && npm run dev
 
 # Terminal 3: Start ML Services
-cd ml-services && python3 app.py
+cd ml-services && python app.py
 ```
 
 #### 3. Access the Application
